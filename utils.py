@@ -4,6 +4,7 @@ https://hal.science/hal-01354467/document
 """
 
 import cv2
+import os
 import numpy as np
 
 
@@ -50,3 +51,14 @@ def document_blurriness(image_path):
     # cv2.waitKey(0)
     
     return blurriness
+
+
+def get_file_size(file_path):
+    if os.path.isfile(file_path):
+        file_info = os.stat(file_path)
+        size_in_bytes = file_info.st_size
+        size_in_kilobytes = size_in_bytes / 1024
+        size_in_megabytes = size_in_kilobytes / 1024
+        return size_in_megabytes
+    else:
+        return "File not found"
