@@ -8,25 +8,24 @@ import os
 import numpy as np
 
 
-def neighborhood_pattern_distributions(image_path):
-    """Estimating degradation model parameters using 
-    neighborhood pattern distributions: an optimization approach.
-    """
-    # Load image
+def contrast_score(image_path):
     image = cv2.imread(image_path)
-
-    # Image to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    contrast = gray.std()
+    return contrast
 
-    # 1. Flip each foreground pixel with probability
-    
-    # 2. Compute the distance d of each pixel from the character boundary
 
-    # 3. Flip each background pixel with probability
+def resolution_score(image_path):
+    image = cv2.imread(image_path)
+    height, width, dpi = image.shape
+    return dpi
 
-    # 4. Perform morphological closing with a disk element of diameter k
 
-    return None
+def noise_score(image_path):
+    image = cv2.imread(image_path)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    noise = cv2.meanStdDev(gray)
+    return noise[1][0][0]
 
 
 def document_blurriness(image_path):
@@ -46,19 +45,52 @@ def document_blurriness(image_path):
         blurriness = f"Средняя размытость (100 < {blur_score} < 500)"
     else:
         blurriness = f"Низкая размытость ({blur_score} >= 500)"
-
-    # cv2.imshow("", blur_score)
-    # cv2.waitKey(0)
     
     return blurriness
 
 
+def detect_unwanted_elements(image_path):
+    # Загрузка изображения
+    image = cv2.imread(image_path)
+    
+    # Преобразование изображения в оттенки серого
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Выполнение гауссово размытие для сглаживания изображения
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    
+    # Применение адаптивного порогового значения для бинаризации изображения
+    thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 11, 4)
+    
+    # Поиск контуров на бинаризованном изображении
+    contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Проход по каждому найденному контуру
+    for contour in contours:
+        # Вычисление площади контура
+        area = cv2.contourArea(contour)
+        
+        # Если площадь контура ниже некоторого порога, то считаем его нежелательным элементом
+        if area < 1000:
+            # Рисуем прямоугольник вокруг нежелательного элемента
+            (x, y, w, h) = cv2.boundingRect(contour)
+            cv2.rectangle(image, (x, y), (x+w, y+h), (0, 0, 255), 2)
+
+    # Отображение изображения с обнаруженными нежелательными элементами
+    cv2.imshow('Result', image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
 def get_file_size(file_path):
+    """Подсчет размера файла скана в Mb
+    """
     if os.path.isfile(file_path):
         file_info = os.stat(file_path)
         size_in_bytes = file_info.st_size
-        size_in_kilobytes = size_in_bytes / 1024
-        size_in_megabytes = size_in_kilobytes / 1024
-        return size_in_megabytes
+        size_in_kilobytes = round(size_in_bytes / 1024, 0)
+        size_in_megabytes: int = int(round(size_in_kilobytes / 1024, 0))
+        return size_in_kilobytes
     else:
-        return "File not found"
+        print("Файл не найден")
+        return -1
